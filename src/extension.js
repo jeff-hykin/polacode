@@ -1,92 +1,90 @@
-const vscode = require('vscode')
-const path = require('path')
-const { writeFileSync } = require('fs')
-const { homedir } = require('os')
+const vscode = require("vscode")
+const path = require("path")
+const { writeFileSync } = require("fs")
+const { homedir } = require("os")
 
-let lastUsedImageUri = vscode.Uri.file(path.resolve(homedir(), 'Desktop/code.png'))
+let lastUsedImageUri = vscode.Uri.file(path.resolve(homedir(), "Desktop/code.png"))
 
 const writeSerializedBlobToFile = (serializeBlob, fileName) => {
-  const bytes = new Uint8Array(serializeBlob.split(','))
-  writeFileSync(fileName, Buffer.from(bytes))
+    const bytes = new Uint8Array(serializeBlob.split(","))
+    writeFileSync(fileName, Buffer.from(bytes))
 }
 
 function activate(context) {
-  let panel
+    let panel
 
-  const panelHandlers = () =>
-    panel.webview.onDidReceiveMessage(
-      message => {
-        switch (message.command) {
-          case 'polacode.shoot':
-            vscode.window
-              .showSaveDialog({
-                defaultUri: lastUsedImageUri,
-                filters: {
-                  Images: ['png']
-                }
-              })
-              .then(uri => {
-                if (uri) {
-                  writeSerializedBlobToFile(message.data, uri.fsPath)
-                  lastUsedImageUri = uri
-                }
-              })
-            return
+    const panelHandlers = () =>
+        panel.webview.onDidReceiveMessage(
+            message => {
+                switch (message.command) {
+                    case "polacode.shoot":
+                        vscode.window
+                            .showSaveDialog({
+                                defaultUri: lastUsedImageUri,
+                                filters: {
+                                    Images: ["png"],
+                                },
+                            })
+                            .then(uri => {
+                                if (uri) {
+                                    writeSerializedBlobToFile(message.data, uri.fsPath)
+                                    lastUsedImageUri = uri
+                                }
+                            })
+                        return
 
-          case 'polacode._onmessage':
-            if (message.data.type === 'updateBgColor') {
-              context.globalState.update('polacode.bgColor', message.data.data.bgColor)
-            } else if (message.data.type === 'invalidPasteContent') {
-              vscode.window.showInformationMessage(
-                'Pasted content is invalid. Only copy from VS Code and check if your shortcuts for copy/paste have conflicts.'
-              )
-            }
-            return
+                    case "polacode._onmessage":
+                        if (message.data.type === "updateBgColor") {
+                            context.globalState.update("polacode.bgColor", message.data.data.bgColor)
+                        } else if (message.data.type === "invalidPasteContent") {
+                            vscode.window.showInformationMessage("Pasted content is invalid. Only copy from VS Code and check if your shortcuts for copy/paste have conflicts.")
+                        }
+                        return
+                }
+            },
+            undefined,
+            context.subscriptions
+        )
+
+    vscode.commands.registerCommand("polacode.activate", () => {
+        panel = vscode.window.createWebviewPanel("polaCode", "PolaCode", vscode.ViewColumn.Two, {
+            enableScripts: true,
+            localResourceRoots: [vscode.Uri.file(path.join(context.extensionPath, "webview"))],
+        })
+
+        panelHandlers()
+
+        const dom2imageJSPath = vscode.Uri.file(path.join(context.extensionPath, "webview", "dom2image.js"))
+        const dom2imageJS = dom2imageJSPath.with({ scheme: "vscode-resource" })
+
+        const vivusJSPath = vscode.Uri.file(path.join(context.extensionPath, "webview", "vivus.js"))
+        const vivusJS = vivusJSPath.with({ scheme: "vscode-resource" })
+
+        const indexJSPath = vscode.Uri.file(path.join(context.extensionPath, "webview", "index.js"))
+        const indexJS = indexJSPath.with({ scheme: "vscode-resource" })
+
+        const fontFamily = vscode.workspace.getConfiguration("editor").fontFamily
+        const bgColor = context.globalState.get("polacode.bgColor", "#2e3440")
+
+        panel.webview.html = getHTML(indexJS, vivusJS, dom2imageJS)
+
+        panel.webview.postMessage({
+            type: "init",
+            fontFamily,
+            bgColor,
+        })
+    })
+
+    vscode.window.onDidChangeTextEditorSelection(e => {
+        if (e.selections[0] && !e.selections[0].isEmpty) {
+            vscode.commands.executeCommand("editor.action.clipboardCopyWithSyntaxHighlightingAction")
+            panel.webview.postMessage({ type: "update" })
         }
-      },
-      undefined,
-      context.subscriptions
-    )
-
-  vscode.commands.registerCommand('polacode.activate', () => {
-    panel = vscode.window.createWebviewPanel('polaCode', 'PolaCode', vscode.ViewColumn.Two, {
-      enableScripts: true,
-      localResourceRoots: [vscode.Uri.file(path.join(context.extensionPath, 'webview'))]
     })
-
-    panelHandlers()
-
-    const dom2imageJSPath = vscode.Uri.file(path.join(context.extensionPath, 'webview', 'dom2image.js'))
-    const dom2imageJS = dom2imageJSPath.with({ scheme: 'vscode-resource' })
-
-    const vivusJSPath = vscode.Uri.file(path.join(context.extensionPath, 'webview', 'vivus.js'))
-    const vivusJS = vivusJSPath.with({ scheme: 'vscode-resource' })
-
-    const indexJSPath = vscode.Uri.file(path.join(context.extensionPath, 'webview', 'index.js'))
-    const indexJS = indexJSPath.with({ scheme: 'vscode-resource' })
-
-    const fontFamily = vscode.workspace.getConfiguration('editor').fontFamily
-    const bgColor = context.globalState.get('polacode.bgColor', '#2e3440')
-
-    panel.webview.html = getHTML(indexJS, vivusJS, dom2imageJS)
-
-    panel.webview.postMessage({
-      type: 'init',
-      fontFamily,
-      bgColor
-    })
-  })
-
-  vscode.window.onDidChangeTextEditorSelection(e => {
-    if (e.selections[0] && !e.selections[0].isEmpty) {
-      vscode.commands.executeCommand('editor.action.clipboardCopyWithSyntaxHighlightingAction')
-      panel.webview.postMessage({ type: 'update' })
-    }
-  })
 }
 
 function getHTML(indexJS, vivusJS, dom2imageJS) {
-  return `<html>
+    return `<html>
   <head>
     <style>
       html {
