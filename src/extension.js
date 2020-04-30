@@ -5,6 +5,8 @@ const { homedir } = require("os")
 
 let lastUsedImageUri = vscode.Uri.file(path.resolve(homedir(), "Desktop/code.png"))
 
+let shouldCopyEverything = false
+
 const writeSerializedBlobToFile = (serializeBlob, fileName) => {
     const bytes = new Uint8Array(serializeBlob.split(","))
     writeFileSync(fileName, Buffer.from(bytes))
@@ -47,6 +49,7 @@ function activate(context) {
         )
 
     vscode.commands.registerCommand("polacode.activate", () => {
+        shouldCopyEverything = true
         panel = vscode.window.createWebviewPanel("polaCode", "PolaCode", vscode.ViewColumn.Two, {
             enableScripts: true,
             localResourceRoots: [vscode.Uri.file(path.join(context.extensionPath, "webview"))],
@@ -73,10 +76,18 @@ function activate(context) {
             fontFamily,
             bgColor,
         })
+
+        panel.onDidDispose(
+            () => {
+                shouldCopyEverything = false
+            },
+            null,
+            context.subscriptions
+        )
     })
 
     vscode.window.onDidChangeTextEditorSelection(e => {
-        if (e.selections[0] && !e.selections[0].isEmpty) {
+        if (e.selections[0] && !e.selections[0].isEmpty && shouldCopyEverything) {
             vscode.commands.executeCommand("editor.action.clipboardCopyWithSyntaxHighlightingAction")
             panel.webview.postMessage({ type: "update" })
         }
