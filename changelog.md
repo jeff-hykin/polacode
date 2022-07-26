@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.6.0 | 2022-07-25
+
+- Improve reliability of selected text showing up in panel
+- Improve load times avoid deprecated API's by inlining the HTML
+
 ### 0.2.2 | 2018-02-19
 
 - Remove "Pasted content is invalid" check. Will do proper HTML validation in [#30](https://github.com/octref/polacode/issues/30).
