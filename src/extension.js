@@ -5,6 +5,7 @@ const { homedir } = require("os")
 
 let lastUsedImageUri = vscode.Uri.file(path.resolve(homedir(), "Desktop/code.png"))
 
+let panel
 let shouldCopyEverything = false
 
 const writeSerializedBlobToFile = (serializeBlob, fileName) => {
@@ -15,11 +16,14 @@ const writeSerializedBlobToFile = (serializeBlob, fileName) => {
 const grabSyntaxHighlightedText = ()=> {
     // have to use the clipboard to pass text around
     vscode.commands.executeCommand("editor.action.clipboardCopyWithSyntaxHighlightingAction")
-    panel.webview.postMessage({ type: "checkClipboard" })
+    setTimeout(() => {
+        panel.webview.postMessage({ type: "checkClipboard" })
+    }, 0)
 }
 
 function activate(context) {
-    let panel
+    
+    shouldCopyEverything = true
 
     const panelHandlers = () =>
         panel.webview.onDidReceiveMessage(
@@ -83,10 +87,12 @@ function activate(context) {
 
     vscode.window.onDidChangeTextEditorSelection(eventObj => {
         if (eventObj.selections[0] && !eventObj.selections[0].isEmpty && shouldCopyEverything) {
-            console.debug(`getting text`)
             grabSyntaxHighlightedText()
             // do it again since sometimes theres delay problems
+            setTimeout(grabSyntaxHighlightedText, 100)
             setTimeout(grabSyntaxHighlightedText, 200)
+            setTimeout(grabSyntaxHighlightedText, 500)
+            setTimeout(grabSyntaxHighlightedText, 1000)
         }
     })
 }
@@ -207,12 +213,6 @@ const mainHtmlCode = function() {
             }
         }
 
-        document.addEventListener("paste", e => {
-            const innerHTML = e.clipboardData.getData("text/html")
-            const code      = e.clipboardData.getData("text/plain")
-            updateCode(innerHTML, code)
-        })
-
         shadowsOption.addEventListener("change", () => {
             const OPT_DISABLED_CLASS = "snippet--no-shadows"
 
@@ -298,6 +298,14 @@ const mainHtmlCode = function() {
                 } else if (data.type === "checkClipboard") {
                     document.execCommand("paste")
                 }
+            }
+        })
+
+        document.addEventListener("paste", e => {
+            const innerHTML = e.clipboardData.getData("text/html")
+            const code      = e.clipboardData.getData("text/plain")
+            if (code.trim().length > 0) {
+                updateCode(innerHTML, code)
             }
         })
     })()
