@@ -1,8 +1,14 @@
-# FORK - CHANGES:
-
-Fixed for the new VS Code update
-
 # Polacode
+
+Note: The original project by [Pine](https://github.com/octref) & [Peng](https://github.com/rebornix) was abandoned, so I picked up it when it broke back in 2019.
+
+Modifications include:
+- Fixed when VS Code switched away from syntax-highlight-copy by default
+- Improved performace from inlining multiple files
+- Anton Palgunov added buttons for toggling transparency and shadow
+- PR's are welcome!
+
+## Original ReadMe
 
 Polaroid for your code 📸.
 
